@@ -113,7 +113,6 @@ isValidSignature(Name, Data, Signature, KeyBits) :-
    Name = _,
    Signature =:= Data + KeyBits.
 
-
 % --- log
 
 log_validpkt(Name, Data, Signature, SigningBits) :-
@@ -126,7 +125,6 @@ log_validcert(SigningName, SigningBits, ParentName, ParentKeyID, Signature, Pare
   write('> correctly signed by '), write(ParentName), write('/keyID='),
   write(ParentKeyID), write(' (signature='), write(Signature),
   write(', signingBits='), write(ParentBits), write(')'), nl.
-
 
 % --- the main loop demo:
 
