@@ -45,7 +45,7 @@ isInTrustedChain(SigningName, KeyID, Schema, RootKeyName, SigningBits) :-
 % --- demo: a hierarchical trust schema with a loop (see Fig XYZ)
 
 % Format of schema rules:
-%   schema(SchemaName, SigningNamePattern, SignedNamePattern).
+%   schema(SchemaName, DataNamePattern, KeyPattern).
 
 schema('LoopSchema',
        [Pfx, 'root', 'key'],  % root has permission to sign ping's key
@@ -63,6 +63,18 @@ schema('LoopSchema',
        [Pfx, 'pong', 'key'],  % pong has permission to sign packets
        [Pfx, 'pkt', _]).
 
+ schema('SimpleSchema',
+        [Pfx, 'root', 'key'],  % root has permission to sign ping's key
+        [Pfx, 'ping', 'key']).
+
+ schema('SimpleSchema',
+        [Pfx, 'ping', 'key'],  % ping has permission to sign pong's key
+        [Pfx, 'pong', 'key']).
+
+ schema('SimpleSchema',
+        [Pfx, 'pong', 'key'],  % pong has permission to sign packets
+        [Pfx, 'pkt', _]).
+
 % --- set of published keys (using numbers as toy signatures, keyIDs)
 
 trustedRetrieve(N, K) :-
@@ -73,7 +85,7 @@ trustedRetrieve(N, K) :-
 
 untrustedRetrieve(pkt(N,I,K,signedInfo(PK,keyID(104)),S)) :-
    PK = [Prefix, 'root', 'key'],
-   N =  [Prefix, 'ping', 'key'], 
+   N =  [Prefix, 'ping', 'key'],
    K =  103,
    I =  keyID(K),
    S =  207.
@@ -118,7 +130,7 @@ log_validcert(SigningName, SigningBits, ParentName, ParentKeyID, Signature, Pare
 
 % --- the main loop demo:
 
-main :-
+loopmain :-
   Prefix = 'somePrefix',
   RootKeyName = [Prefix, 'root', 'key'],
 
@@ -131,5 +143,19 @@ main :-
 
   isValidPacket(Packet, 'LoopSchema', RootKeyName).
 
-% eof
+% --- a simple hierarchical demo:
 
+simplemain :-
+  Prefix = 'somePrefix',
+  RootKeyName = [Prefix, 'root', 'key'],
+
+  PktName = [Prefix, 'pkt', 678],
+  Data = 1000,
+  Signature = 1102,
+  SigningName = [Prefix, 'pong', 'key'],
+  KeyID = keyID(102),
+  Packet = pkt(PktName, Data, signedInfo(SigningName, KeyID), Signature),
+
+  isValidPacket(Packet, 'SimpleSchema', RootKeyName).
+
+% eof
