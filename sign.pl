@@ -14,12 +14,12 @@ schema('SimpleSchema',
        [Pfx, 'pong', 'key'],  % pong has permission to sign packets
        [Pfx, 'pkt', _]).
 
-% Schema match clause
+% Schema match clause -- traverse up the schema
 schemaMatch(Name, Schema, RootKeyName) :-
-%  print(Name),
-  schema(Schema, X, Name), % there exists a signing key for Name
-  schemaMatch(X, Schema, RootKeyName). % there exists a signing key for that parent
+  schema(Schema, X, Name),             % A) there exists a signing key for Name, name
+  schemaMatch(X, Schema, RootKeyName). % B) recurse for that signing key
 
+% Terminal clause (we've reached a root)
 schemaMatch(Name, Schema, RootKeyName) :-
   schema(Schema, RootKeyName, Name).
 
