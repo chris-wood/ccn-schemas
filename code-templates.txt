@@ -1,0 +1,101 @@
+# code-templates.txt
+
+# for each of the four possible trust models
+
+# pkt contains:
+#   DataName
+#   KeyName (could be empty)
+#   PktHash
+#   PktSignature
+
+# data structures:
+# knownKeyBitsDB: dataprefix ~ keyBits
+
+==== in all trust model do:
+
+validatePkt(Strategy, Schema, DataName, KeyNameOrId,
+            PktHash, PktSignature, confidenceContextIn,
+            confidenceContextOut) :- ...
+  getTrustedKeyBits(in: Strategy, Schema, DataName, KeyNameOrId,
+                        confidenceContextIn;
+                    out:KeyBits, confidenceContextOut),
+  validate(PktHash, PktSignature, KeyBits):
+
+
+==== a) strategy == hierarchical trust
+
+getTrustedKeyBits(in: Strategy, Schema, DataName, KeyNameOrId;
+                    out:KeyBits) :-
+  if unKnownKey(KeyNameOrId):
+    getTrustedKeyByName(KeyNameOrId)
+  getKeyBits(KeyNameOrId)
+
+getTrustedKeyByName(KeyNameOrId) :- // side effect: put it into
+                                    // trusted key DB
+  ccnLookup(KeyNameOrId) --> signed (public) Key Bits, PktHAsh, PktSign
+  extractSignerNameFromSignature --> signerKeyName
+  validatePkt(Strategy, Schema, KeyNameOrId, signerKeyName,
+              PktHash, PktSignature)
+  addKeyBits(KeyNameOrId, KeyBits)
+
+
+
+
+==== b) schematized trust
+
+getTrustedKeyBits(in: Strategy, Schema, DataName, KeyNameOrId;
+                    out:KeyBits) :-
+  isValidSignerName(Schema, DataName, KeyNameOrID),
+  if unKnownKey(KeyNameOrId):
+    getTrustedKeyByName(KeyNameOrId)
+  getKeyBits(KeyNameOrId)
+
+getTrustedKeyByName(KeyNameOrId) :- // side effect: put it into
+                                    // trusted key DB
+  ccnLookup(KeyNameOrId) --> signed (public) Key Bits, PktHAsh, PktSign
+  extractSignerNameFromSignature --> signerKeyName
+  validatePkt(Strategy, Schema, KeyNameOrId, signerKeyName,
+              PktHash, PktSignature)
+  addKeyBits(KeyNameOrId, KeyBits)
+
+
+
+
+==== c) web of trust
+
+getTrustedKeyBits(in: Strategy, Schema, DataName, KeyNameOrId,
+                      confidenceContextIn;
+                    out:KeyBits, confidenceContextOut) :-
+  # isValidSignerName(Schema, DataName, KeyNameOrID),
+  if unKnownKey(KeyNameOrId):
+    getTrustedKeyByName(KeyNameOrId, Param, confidenceContextIn,
+                        confidnceContextOut)
+  getKeyBits(KeyNameOrId)
+
+getTrustedKeyByName(KeyNameOrId, Param, confidenceContextIn) :-
+                       // side effect: put it into
+                       // trusted key DB
+  ccnLookup(KeyNameOrId) --> signed (public) Key Bits, PktHAsh, PktSign
+  extractSignerNameFromSignature --> signerKeyName
+  validatePkt(Strategy, Schema, KeyNameOrId, signerKeyName,
+              PktHash, PktSignature, confidenceContextIn, 
+              confidenceInSigner)
+  isTrustworthy(confidenceContextIn, Param, confidenceInSigner),
+  confidenceContextOut = (confidenceContextIn, confidenceInSigner)
+  addKeyBits(KeyNameOrId, KeyBits, confidenceContextOut)
+
+
+d) symmetric(keyed MAC)
+
+
+getTrustedKeyBits(in: Strategy, Schema, DataName, KeyNameOrId,
+                      confidenceContextIn;
+                    out:KeyBits, confidenceContextOut) :-
+  # isValidSignerName(Schema, DataName, KeyNameOrID),
+  if unKnownKey(KeyNameOrId):
+    fail
+    # or kick off a symmetric key delivery protocol to get it
+  getKeyBits(KeyNameOrId)
+
+
+
