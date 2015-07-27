@@ -1,4 +1,4 @@
-% engine-v4.pl
+% engine-v5.pl
 
 % data structures:
 %
@@ -11,7 +11,7 @@
 % schema(SignerPath, SigneePath)
 % confid(FriendName, Float)
 
-% ==== code that is common to all trust models:
+% ==== validation code that is common to all trust models:
 
 isValidPkt(Packet, TrustContextIn, TrustContextOut) :-
   Packet = pkt(DataName, _, KeyInfo, PktHash, PktSignature),
@@ -20,7 +20,7 @@ isValidPkt(Packet, TrustContextIn, TrustContextOut) :-
   isValidSignature(PktHash, PktSignature, KeyBits),
   write(KeyInfo), write(' validates the packet with '), write(DataName), nl.
 
-getTrustedKey(DataName, KeyInfo, TrustContext, TrustContext) :-
+getTrustedKey(_, KeyInfo, TrustContext, TrustContext) :-
   TrustContext = trustCtx(_, TrustedKeyList, _),
   member(KeyInfo, TrustedKeyList).
 
@@ -30,6 +30,17 @@ getTrustedKey(DataName, KeyInfo, TrustContextIn, TrustContextOut) :-
 isValidSignature(h(val(Msg)), Signature, val(KeyBits)) :-
   S is Msg + KeyBits,
   Signature = s(S).
+
+% ==== signing code, for schematized trust only
+
+getSigningName(DataName, TrustContext, [SignerName|Tail]) :-
+  TrustContext = trustCtx('schematized', KeyList, Schema),
+  member(schema(SignerName, DataName), Schema),
+  (member(key(SignerName, _, _), KeyList), Tail= []
+  ;
+   getSigningName(SignerName, TrustContext, Tail)
+  ).
+
 
 % ==== a) pre-shared key (keyed MAC)
 
@@ -130,6 +141,8 @@ mySchemaTrust(C) :-
                [ key(name(['root','key']), _, val(104)) ], % one trust anchor
                [ schema(name(['root','key']), name(['ping','key'])),
                  schema(name(['ping','key']), name(['pong','key'])),
+%                 schema(name(['ping','key']), name(['pang','key'])),
+%                 schema(name(['pang','key']), name(['pkt',_])),
                  schema(name(['pong','key']), name(['pkt',_]))
                ]).
 
@@ -182,11 +195,22 @@ woft :-
 
 % ----------------------------------------------------------------------
 
+% signing
+
+sign :-
+  mySchemaTrust(Ctx),
+  N = name(['pkt','678']),
+  getSigningName(N, Ctx, Path),
+  write('you can sign data with '), write(N), write(' via '), write(Path), nl.
+
+% ----------------------------------------------------------------------
+
 main :-
   write('Three tests to run:'), nl,
   write('  hmac.'), nl,
   write('  hier.'), nl,
   write('  sche.'), nl,
-  write('  woft.'), nl.
+  write('  woft.'), nl,
+  write('  sign.'), nl.
 
 % eof
