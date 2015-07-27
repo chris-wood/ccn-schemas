@@ -64,20 +64,22 @@ fetchTrustedKey(DataName, KeyHint, TrustContextIn, TrustContextOut) :-
 
 % ==== d) web of trust
 
-fetchTrustedKey(_, _, TrustContextIn, TrustContextOut) :-
+fetchTrustedKey(_, Key, TrustContextIn, TrustContextOut) :-
   TrustContextIn = trustCtx('webOfTrust', _, ConfidenceList),
-  member((name(FriendName, Conf), ConfidenceList),
+  member(confid(FriendName, Conf), ConfidenceList),
   (
     Conf < 0.5, fail
   ;
-    ccnFetchFriends(FriendName), FriendList),
+    ccnFetchFriends(FriendName, FriendList),
     member(FriendFriend, FriendList),
     ccnFetchCert(FriendFriend, CertPkt),
+    CertPkt = pkt(FriendFriend, KeyBits, _, _, _),
     isValidPkt(CertPkt, TrustContextIn, TrustContextTmp),
+    Key = key(FriendFriend, _, KeyBits),
     TrustContextTmp = trustCtx('webOfTrust', KeyList, ConfList),
-    C is Conf * 0.8,
+    C is Conf * 0.9,
     TrustContextOut = trustCtx('webOfTrust', [Key | KeyList],
-                               [(FriendFriend, C) | ConfList]).
+                               [confid(FriendFriend, C) | ConfList])
   ).
 
 % ----------------------------------------------------------------------
@@ -160,36 +162,22 @@ sche :-
 
 myTrustWeb(C) :-
   C = trustCtx('webOfTrust',
-               [ key(name(['alice','key']), _, val(104)) ], % one trust anchor
+               [ key(name(['alice','key']), _, val(7)) ], % one trust anchor
                [ confid(name(['alice','key']), 0.9) ]).
 
-ccnFetchFriends(name(['alice','key'], [ name('bob', 'key') ].
-
-N, pkt(N, val(Msg), KeyInfo, h(val(Msg)), s(S))) :-
+ccnFetchFriends(name(['alice','key']), [ name(['bob', 'key']) ]).
 
 ccnFetchCert(N, pkt(N, val(Msg), KeyInfo, h(val(Msg)), s(S))) :-
-  N = name(['ping','key']),
-  Msg = 103,
-  KeyInfo = key(name(['root','key']), id(104), _),
-  S = 207.
+  N = name(['bob','key']),
+  Msg = 15,
+  KeyInfo = key(name(['alice','key']), _, _),
+  S = 22.
 
-ccnFetchCert(N, pkt(N, val(Msg), KeyInfo, h(val(Msg)), s(S))) :-
-  N = name(['pong','key']),
-  Msg = 102,
-  KeyInfo = key(name(['ping','key']), id(103), _),
-  S = 205.
-
-ccnFetchCert(N, pkt(N, val(Msg), KeyInfo, h(val(Msg)), s(S))) :-
-  N = name(['ping','key']),
-  Msg = 103,
-  KeyInfo = key(name(['pong','key']), id(102), _),
-  S = 205.
-
-sche :-
-  % pkt contains key locator of signer
-  Msg = val(1000),
-  Pkt = pkt(name(['pkt','678']), Msg, key(name(['pong','key']), id(102), _), h(Msg), s(1102)),
-  mySchemaTrust(Ctx),
+woft :-
+  % no key hint, this time
+  Msg = val(55),
+  Pkt = pkt(name(['pkt','678']), Msg, _, h(Msg), s(70)),
+  myTrustWeb(Ctx),
   isValidPkt(Pkt, Ctx, _).
 
 % ----------------------------------------------------------------------
